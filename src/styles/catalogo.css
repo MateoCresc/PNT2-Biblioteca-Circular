@@ -1,0 +1,87 @@
+.catalogo-page {
+  min-height: 100vh;
+  background: #f3f4f6;
+}
+
+.topbar {
+  background: #1e40af;
+  color: white;
+
+  padding: 18px 40px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.usuario-box {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.logout-btn {
+  background: white;
+  color: #1e40af;
+
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-weight: bold;
+}
+
+.catalogo-card {
+  max-width: 1200px;
+  margin: 30px auto;
+
+  background: white;
+
+  border-radius: 16px;
+
+  padding: 30px;
+
+  box-shadow: 0 10px 25px rgba(0,0,0,.08);
+}
+
+.catalogo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  margin-bottom: 20px;
+}
+
+.search-input {
+  width: 300px;
+
+  padding: 10px 15px;
+
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+thead {
+  background: #2563eb;
+}
+
+thead th {
+  color: white;
+  font-weight: 600;
+}
+th,
+td {
+  padding: 14px;
+  text-align: left;
+}
+
+tbody tr {
+  border-bottom: 1px solid #eee;
+}
+
+tbody tr:hover {
+  background: #f9fafb;
+}
