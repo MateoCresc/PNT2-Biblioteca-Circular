@@ -3,18 +3,9 @@ import { ref, onMounted, computed } from 'vue'
 import { obtenerLibros } from '../services/librosService'
 import '../styles/catalogo.css'
 
-import { useRouter } from 'vue-router'
-
-const router = useRouter()
-
 const usuario = JSON.parse(
   localStorage.getItem('usuario')
 )
-
-const cerrarSesion = () => {
-  localStorage.removeItem('usuario')
-  router.push('/login')
-}
 
 const libros = ref([])
 const busqueda = ref('')
@@ -43,13 +34,6 @@ const librosFiltrados = computed(() => {
 
       <div class="usuario-box">
         <span>{{ usuario.nombre }}</span>
-
-        <button
-          class="logout-btn"
-          @click="cerrarSesion"
-        >
-          Cerrar sesión
-        </button>
       </div>
 
     </header>

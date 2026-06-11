@@ -17,25 +17,44 @@ const routes = [
   },
   {
     path: '/catalogo',
-    component: CatalogoView
+    component: CatalogoView,
+    meta: { roles: ['admin', 'bibliotecario', 'usuario'] }
   },
   {
     path: '/operaciones',
-    component: OperacionesView
+    component: OperacionesView,
+    meta: { roles: ['admin', 'bibliotecario'] }
   },
   {
     path: '/usuarios',
-    component: UsuariosView
+    component: UsuariosView,
+    meta: { roles: ['admin'] }
   },
   {
     path: '/informes',
-    component: InformesView
+    component: InformesView,
+    meta: { roles: ['admin', 'bibliotecario'] }
   }
 ]
 
 const router = createRouter({
   history: createWebHistory(),
   routes
+})
+
+router.beforeEach((to) => {
+  const usuario = JSON.parse(localStorage.getItem('usuario'))
+
+  if (to.path === '/login') {
+    return usuario ? '/catalogo' : true
+  }
+
+  if (!usuario) return '/login'
+
+  const rolesPermitidos = to.meta.roles
+  if (rolesPermitidos && !rolesPermitidos.includes(usuario.rol)) {
+    return '/catalogo'
+  }
 })
 
 export default router
