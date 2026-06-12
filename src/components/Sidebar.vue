@@ -4,6 +4,11 @@ import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
+const volver = () => {
+  router.back()
+}
+
+
 const usuario = JSON.parse(localStorage.getItem('usuario'))
 
 const cerrarSesion = () => {
