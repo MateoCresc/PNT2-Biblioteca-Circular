@@ -8,9 +8,7 @@ const volver = () => {
   router.back()
 }
 
-const cerrarSesion = () => {
-  router.push('/login')
-}
+
 const usuario = JSON.parse(localStorage.getItem('usuario'))
 
 const cerrarSesion = () => {

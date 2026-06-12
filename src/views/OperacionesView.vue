@@ -1,5 +1,5 @@
 <script setup>
-import Sidebar from '../components/Sidebar.vue'
+//import Sidebar from '../components/Sidebar.vue'
 import { ref } from 'vue'
 
 const operaciones = ref([
@@ -39,11 +39,7 @@ const rechazarOperacion = (operacion) => {
 </script>
 
 <template>
-  <div class="layout">
-
-    <Sidebar />
-
-    <div class="contenido">
+  <div class="contenido">
 
       <h2>Operaciones Pendientes</h2>
 
@@ -120,16 +116,11 @@ const rechazarOperacion = (operacion) => {
 
       </table>
 
-    </div>
-
   </div>
 </template>
 
 <style scoped>
-.layout {
-  display: flex;
-  min-height: 100vh;
-}
+
 
 .contenido {
   flex: 1;
