@@ -1,33 +1,10 @@
 <script setup>
 //import Sidebar from '../components/Sidebar.vue'
-import { ref } from 'vue'
 
-const operaciones = ref([
-  {
-    id: 1,
-    tipo: 'Préstamo',
-    libro: 'El Principito',
-    autor: 'Antoine de Saint-Exupéry',
-    usuario: 'Franco',
-    estado: 'Pendiente'
-  },
-  {
-    id: 2,
-    tipo: 'Devolución',
-    libro: '1984',
-    autor: 'George Orwell',
-    usuario: 'Ana',
-    estado: 'Pendiente'
-  },
-  {
-    id: 3,
-    tipo: 'Venta',
-    libro: 'Clean Code',
-    autor: 'Robert Martin',
-    usuario: 'Juan',
-    estado: 'Pendiente'
-  }
-])
+import { ref, onMounted } from 'vue'
+import { obtenerLibros } from '../services/librosService'
+
+const operaciones = ref([])
 
 const aprobarOperacion = (operacion) => {
   operacion.estado = 'Aprobada'
@@ -36,6 +13,21 @@ const aprobarOperacion = (operacion) => {
 const rechazarOperacion = (operacion) => {
   operacion.estado = 'Rechazada'
 }
+
+onMounted(async () => {
+  const libros = await obtenerLibros()
+
+  operaciones.value = libros.map((libro, index) => ({
+    id: index + 1,
+    tipo: 'Préstamo',
+    libro: libro.titulo,
+    autor: libro.autor,
+    usuario: 'Pendiente de asignar',
+    estado: 'Pendiente'
+  }))
+})
+
+
 </script>
 
 <template>
