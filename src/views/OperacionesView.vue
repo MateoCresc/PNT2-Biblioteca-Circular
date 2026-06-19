@@ -20,7 +20,6 @@ const aprobarOperacion = async (operacion) => {
 
     await actualizarLibro(libro)
 
-    // 🔥 refrescamos datos desde storage/service
     libros.value = await obtenerLibros()
 
     operacion.estado = 'Aprobada'
