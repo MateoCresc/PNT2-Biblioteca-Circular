@@ -41,9 +41,7 @@ const cargarLibros = async () => {
 
 const librosFiltrados = computed(() => {
   return libros.value.filter(libro =>
-    libro.titulo
-      .toLowerCase()
-      .includes(busqueda.value.toLowerCase())
+    libro.titulo.toLowerCase().includes(busqueda.value.toLowerCase())
   )
 })
 
