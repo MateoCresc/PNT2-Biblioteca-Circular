@@ -1,11 +1,9 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onActivated, computed } from 'vue'
 import { obtenerLibros } from '../services/librosService'
 import '../styles/catalogo.css'
 
-const usuario = JSON.parse(
-  localStorage.getItem('usuario')
-)
+const usuario = JSON.parse(localStorage.getItem('usuario'))
 
 const libros = ref([])
 const busqueda = ref('')
@@ -14,11 +12,13 @@ onMounted(async () => {
   libros.value = await obtenerLibros()
 })
 
+onActivated(async () => {
+  libros.value = await obtenerLibros()
+})
+
 const librosFiltrados = computed(() => {
   return libros.value.filter(libro =>
-    libro.titulo
-      .toLowerCase()
-      .includes(busqueda.value.toLowerCase())
+    libro.titulo.toLowerCase().includes(busqueda.value.toLowerCase())
   )
 })
 </script>

@@ -2,12 +2,32 @@
 //import Sidebar from '../components/Sidebar.vue'
 
 import { ref, onMounted } from 'vue'
-import { obtenerLibros } from '../services/librosService'
+import { obtenerLibros, actualizarLibro } from '../services/librosService'
 
 const operaciones = ref([])
+const libros = ref([])
 
-const aprobarOperacion = (operacion) => {
-  operacion.estado = 'Aprobada'
+const aprobarOperacion = async (operacion) => {
+  const libro = libros.value.find(l => l.id == operacion.libroId)
+
+  if (!libro) {
+    alert("No se encontró el libro")
+    return
+  }
+
+  if (Number(libro.stock) > 0) {
+    libro.stock = Number(libro.stock) - 1
+
+    await actualizarLibro(libro)
+
+    // 🔥 refrescamos datos desde storage/service
+    libros.value = await obtenerLibros()
+
+    operacion.estado = 'Aprobada'
+  } else {
+    alert("No hay stock disponible")
+    operacion.estado = 'Pendiente'
+  }
 }
 
 const rechazarOperacion = (operacion) => {
@@ -15,10 +35,11 @@ const rechazarOperacion = (operacion) => {
 }
 
 onMounted(async () => {
-  const libros = await obtenerLibros()
+  libros.value = await obtenerLibros()
 
-  operaciones.value = libros.map((libro, index) => ({
-    id: index + 1,
+  operaciones.value = libros.value.map((libro) => ({
+    id: crypto.randomUUID(),
+    libroId: libro.id,
     tipo: 'Préstamo',
     libro: libro.titulo,
     autor: libro.autor,
@@ -26,7 +47,6 @@ onMounted(async () => {
     estado: 'Pendiente'
   }))
 })
-
 
 </script>
 
