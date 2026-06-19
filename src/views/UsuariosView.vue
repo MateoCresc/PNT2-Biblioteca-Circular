@@ -53,8 +53,6 @@ const abrirAlta = () => {
   formulario.value = { nombre: '', email: '', password: '1234', rol: 'usuario', estado: 'activo' }
 }
 
-
-// Acá de nuevo usa usuario id
 const abrirModificacion = (usuario) => {
   editando.value = true
   mostrandoFormulario.value = true
