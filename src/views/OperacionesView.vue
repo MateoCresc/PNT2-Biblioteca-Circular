@@ -18,7 +18,10 @@ const aprobarOperacion = async (operacion) => {
   if (Number(libro.stock) > 0) {
     libro.stock = Number(libro.stock) - 1
 
-    await actualizarLibro(libro)
+    await actualizarLibro(
+      libro.titulo,
+      libro
+    )
 
     libros.value = await obtenerLibros()
 
