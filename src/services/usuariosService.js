@@ -25,10 +25,6 @@ export async function crearUsuario(nuevoUsuario) {
   return await response.json()
 }
 
-
-// Los siguientes métodos buscan usuario por id, pero el json de usuarios tiene id?
-
-
 // Baja lógica
 export async function eliminarUsuario(email) {
   const usuario = await obtenerUsuarioPorEmail(email)

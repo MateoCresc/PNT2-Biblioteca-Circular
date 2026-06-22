@@ -1,41 +1,55 @@
 <script setup>
 //import Sidebar from '../components/Sidebar.vue'
-import { ref } from 'vue'
 
-const operaciones = ref([
-  {
-    id: 1,
-    tipo: 'Préstamo',
-    libro: 'El Principito',
-    autor: 'Antoine de Saint-Exupéry',
-    usuario: 'Franco',
-    estado: 'Pendiente'
-  },
-  {
-    id: 2,
-    tipo: 'Devolución',
-    libro: '1984',
-    autor: 'George Orwell',
-    usuario: 'Ana',
-    estado: 'Pendiente'
-  },
-  {
-    id: 3,
-    tipo: 'Venta',
-    libro: 'Clean Code',
-    autor: 'Robert Martin',
-    usuario: 'Juan',
-    estado: 'Pendiente'
+import { ref, onMounted } from 'vue'
+import { obtenerLibros, actualizarLibro } from '../services/librosService'
+
+const operaciones = ref([])
+const libros = ref([])
+
+const aprobarOperacion = async (operacion) => {
+  const libro = libros.value.find(l => l.id == operacion.libroId)
+
+  if (!libro) {
+    alert("No se encontró el libro")
+    return
   }
-])
 
-const aprobarOperacion = (operacion) => {
-  operacion.estado = 'Aprobada'
+  if (Number(libro.stock) > 0) {
+    libro.stock = Number(libro.stock) - 1
+
+    await actualizarLibro(
+      libro.titulo,
+      libro
+    )
+
+    libros.value = await obtenerLibros()
+
+    operacion.estado = 'Aprobada'
+  } else {
+    alert("No hay stock disponible")
+    operacion.estado = 'Pendiente'
+  }
 }
 
 const rechazarOperacion = (operacion) => {
   operacion.estado = 'Rechazada'
 }
+
+onMounted(async () => {
+  libros.value = await obtenerLibros()
+
+  operaciones.value = libros.value.map((libro) => ({
+    id: crypto.randomUUID(),
+    libroId: libro.id,
+    tipo: 'Préstamo',
+    libro: libro.titulo,
+    autor: libro.autor,
+    usuario: 'Pendiente de asignar',
+    estado: 'Pendiente'
+  }))
+})
+
 </script>
 
 <template>
