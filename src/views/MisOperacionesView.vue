@@ -2,11 +2,17 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { obtenerOperacionesPorUsuario } from '../services/operacionesService'
+import AppCard from '../components/AppCard.vue'
+import AppButton from '../components/AppButton.vue'
+import StatusBadge from '../components/StatusBadge.vue'
+import LoadingSpinner from '../components/LoadingSpinner.vue'
+import EmptyState from '../components/EmptyState.vue'
 
 const router = useRouter()
 const usuario = JSON.parse(localStorage.getItem('usuario'))
 
 const operaciones = ref([])
+const cargando = ref(true)
 
 onMounted(async () => {
   if (!usuario) {
@@ -14,94 +20,91 @@ onMounted(async () => {
     return
   }
   operaciones.value = await obtenerOperacionesPorUsuario(usuario.id)
+  cargando.value = false
 })
 </script>
 
 <template>
-  <div class="contenido">
+  <div class="mis-operaciones-page">
     <h2>Mis Operaciones</h2>
 
-    <table v-if="operaciones.length > 0" class="tabla-operaciones">
-      <thead>
-        <tr>
-          <th>Fecha</th>
-          <th>Tipo</th>
-          <th>Libro</th>
-          <th>Autor</th>
-          <th>Estado</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="op in operaciones" :key="op.id">
-          <td>{{ op.fecha }}</td>
-          <td>{{ op.tipo === 'retiro' ? 'Retiro' : 'Donación' }}</td>
-          <td>{{ op.titulo }}</td>
-          <td>{{ op.autor }}</td>
-          <td>
-            <span
-              class="badge"
-              :class="{
-                pendiente: op.estado === 'pendiente',
-                aprobada: op.estado === 'aprobada',
-                rechazada: op.estado === 'rechazada'
-              }"
-            >
-              {{ op.estado === 'pendiente' ? '⏳' : op.estado === 'aprobada' ? '✅' : '❌' }}
-              {{ op.estado.charAt(0).toUpperCase() + op.estado.slice(1) }}
-            </span>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <LoadingSpinner v-if="cargando" />
 
-    <p v-else style="margin-top: 15px; color: #64748b;">No hay operaciones registradas.</p>
+    <template v-else>
+      <EmptyState
+        v-if="operaciones.length === 0"
+        icon="📋"
+        title="No tenés operaciones todavía"
+        description="Explorá el catálogo para retirar o donar tu primer libro."
+      >
+        <template #action>
+          <AppButton variant="primary" @click="router.push('/catalogo')">
+            Ir al catálogo
+          </AppButton>
+        </template>
+      </EmptyState>
+
+      <AppCard v-else>
+        <table class="tabla-operaciones">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Tipo</th>
+              <th>Libro</th>
+              <th>Autor</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="op in operaciones" :key="op.id">
+              <td>{{ op.fecha }}</td>
+              <td>{{ op.tipo === 'retiro' ? 'Retiro' : 'Donación' }}</td>
+              <td>{{ op.titulo }}</td>
+              <td>{{ op.autor }}</td>
+              <td>
+                <StatusBadge :estado="op.estado" />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </AppCard>
+    </template>
   </div>
 </template>
 
 <style scoped>
-.contenido {
-  flex: 1;
-  padding: 20px;
+.mis-operaciones-page {
+  padding: var(--space-lg);
 }
 
 h2 {
-  margin-bottom: 20px;
+  margin-bottom: var(--space-lg);
 }
 
 .tabla-operaciones {
   width: 100%;
   border-collapse: collapse;
-  background: var(--card);
 }
 
 .tabla-operaciones th,
 .tabla-operaciones td {
-  border: 1px solid var(--border);
+  border: 1px solid var(--color-border);
   padding: 12px;
   text-align: left;
+  font-size: var(--font-size-sm);
 }
 
 .tabla-operaciones th {
-  background: var(--primary);
-  color: white;
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  font-weight: 600;
 }
 
-.badge {
-  font-size: 0.9rem;
-  padding: 0.5rem 0.8rem;
-  border-radius: 6px;
-  color: white;
+.tabla-operaciones tbody tr {
+  transition: background-color var(--transition-fast);
 }
 
-.pendiente {
-  background-color: #f59e0b;
-}
-
-.aprobada {
-  background-color: #10b981;
-}
-
-.rechazada {
-  background-color: #ef4444;
+.tabla-operaciones tbody tr:hover {
+  background: #f9fafb;
 }
 </style>

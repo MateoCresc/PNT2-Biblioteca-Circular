@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { login } from '../services/authService'
-import '../styles/login.css'
+import AppButton from '../components/AppButton.vue'
 
 const router = useRouter()
 
@@ -36,9 +36,9 @@ const iniciarSesion = async () => {
   <div class="login-page">
     <div class="login-card">
 
-      <h1>📚 Biblioteca Digital</h1>
+      <h1 class="login-title">Biblioteca Digital</h1>
 
-      <form @submit.prevent="iniciarSesion">
+      <form @submit.prevent="iniciarSesion" class="login-form">
 
         <div class="form-group">
           <label>Email</label>
@@ -58,9 +58,9 @@ const iniciarSesion = async () => {
           />
         </div>
 
-        <button class="login-btn" type="submit">
+        <AppButton variant="primary" type="submit" class="login-btn">
           Ingresar
-        </button>
+        </AppButton>
 
         <p class="error" v-if="error">
           {{ error }}
@@ -73,18 +73,59 @@ const iniciarSesion = async () => {
 </template>
 
 <style scoped>
-.login-container {
-  max-width: 400px;
-  margin: 50px auto;
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-topbar));
 }
 
-input {
+.login-card {
+  background: var(--color-card);
+  padding: 40px;
+  border-radius: var(--radius-lg);
+  width: 400px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+.login-title {
+  text-align: center;
+  margin-bottom: 30px;
+  font-size: var(--font-size-xl);
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.form-group label {
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+}
+
+.form-group input {
   width: 100%;
-  padding: 8px;
-  margin-bottom: 10px;
+  padding: 12px;
 }
 
-button {
-  padding: 10px;
+.login-btn {
+  width: 100%;
+  padding: 12px;
+  margin-top: var(--space-sm);
+}
+
+.error {
+  color: var(--color-danger);
+  font-size: var(--font-size-sm);
+  text-align: center;
 }
 </style>

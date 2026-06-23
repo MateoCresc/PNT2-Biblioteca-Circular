@@ -8,17 +8,23 @@ import {
   eliminarLibro
 } from '../services/librosService'
 import { crearOperacion } from '../services/operacionesService'
-import '../styles/catalogo.css'
+import { useToast } from '../composables/useToast'
+import AppButton from '../components/AppButton.vue'
+import AppCard from '../components/AppCard.vue'
+import AppModal from '../components/AppModal.vue'
+import FormField from '../components/FormField.vue'
+import LoadingSpinner from '../components/LoadingSpinner.vue'
+import EmptyState from '../components/EmptyState.vue'
 
 const router = useRouter()
-const usuario = JSON.parse(
-  localStorage.getItem('usuario')
-)
+const { mostrar } = useToast()
+const usuario = JSON.parse(localStorage.getItem('usuario'))
 
 const esUsuario = computed(() => usuario?.rol === 'usuario')
 
 const libros = ref([])
 const busqueda = ref('')
+const cargando = ref(true)
 
 const mostrandoFormulario = ref(false)
 const editando = ref(false)
@@ -37,6 +43,35 @@ const formularioDonacion = ref({
   genero: ''
 })
 
+// Modal de confirmación
+const modalVisible = ref(false)
+const modalTitulo = ref('')
+const modalMensaje = ref('')
+const modalVariant = ref('default')
+const modalCallback = ref(null)
+
+// Modal de cantidad (reemplaza prompt)
+const modalCantidadVisible = ref(false)
+const modalCantidadLibro = ref(null)
+const cantidadEliminar = ref(1)
+
+const abrirModalConfirm = (titulo, mensaje, variant, callback) => {
+  modalTitulo.value = titulo
+  modalMensaje.value = mensaje
+  modalVariant.value = variant
+  modalCallback.value = callback
+  modalVisible.value = true
+}
+
+const confirmarModal = () => {
+  modalVisible.value = false
+  if (modalCallback.value) modalCallback.value()
+}
+
+const cerrarModal = () => {
+  modalVisible.value = false
+}
+
 onMounted(async () => {
   if (!usuario) {
     router.push('/login')
@@ -46,7 +81,9 @@ onMounted(async () => {
 })
 
 const cargarLibros = async () => {
+  cargando.value = true
   libros.value = await obtenerLibros()
+  cargando.value = false
 }
 
 const paginaActual = ref(1)
@@ -82,62 +119,81 @@ const abrirModificacion = (libro) => {
 
 const guardarLibro = async () => {
   if (!formulario.value.titulo || !formulario.value.autor) {
-    alert('Se deben completar todos los campos')
+    mostrar('Se deben completar todos los campos', 'error')
     return
   }
 
   if (editando.value) {
-    const seguro = confirm(`¿Guardar los cambios para ${formulario.value.titulo}?`)
-    if (!seguro) return
-
-    const indice = libros.value.findIndex(
-      l => l.titulo === tituloLibroEdicion.value
+    abrirModalConfirm(
+      'Guardar cambios',
+      `¿Guardar los cambios para "${formulario.value.titulo}"?`,
+      'default',
+      async () => {
+        const indice = libros.value.findIndex(
+          l => l.titulo === tituloLibroEdicion.value
+        )
+        if (indice !== -1) {
+          libros.value[indice] = { ...formulario.value }
+        }
+        try {
+          await actualizarLibro(tituloLibroEdicion.value, formulario.value)
+          mostrar('Libro actualizado correctamente', 'success')
+        } catch (error) {
+          console.error('Error al guardar en MockAPI:', error)
+        }
+        mostrandoFormulario.value = false
+        await cargarLibros()
+      }
     )
-
-    if (indice !== -1) {
-      libros.value[indice] = { ...formulario.value }
-    }
-
-    try {
-      await actualizarLibro(tituloLibroEdicion.value, formulario.value)
-    } catch (error) {
-      console.error('Error al guardar en MockAPI:', error)
-    }
   } else {
     try {
       const nuevo = await agregarLibro(formulario.value)
       libros.value.push(nuevo)
+      mostrar('Libro registrado correctamente', 'success')
     } catch (error) {
       libros.value.push({ ...formulario.value })
     }
+    mostrandoFormulario.value = false
+    await cargarLibros()
   }
-
-  mostrandoFormulario.value = false
-  await cargarLibros()
 }
 
-const ejecutarBaja = async (libro) => {
-  const cantidad = prompt(`¿Cuántos ejemplares de "${libro.titulo}" deseas eliminar? (Stock actual: ${libro.stock})`)
-  if (cantidad === null) return
+const ejecutarBaja = (libro) => {
+  modalCantidadLibro.value = libro
+  cantidadEliminar.value = 1
+  modalCantidadVisible.value = true
+}
 
-  const num = Number(cantidad)
+const confirmarBaja = async () => {
+  const libro = modalCantidadLibro.value
+  const num = Number(cantidadEliminar.value)
+
   if (isNaN(num) || num <= 0 || !Number.isInteger(num)) {
-    alert('Ingresá un número entero mayor a 0')
+    mostrar('Ingresá un número entero mayor a 0', 'error')
     return
   }
 
   if (num > Number(libro.stock)) {
-    alert(`No podés eliminar más de ${libro.stock} ejemplares`)
+    mostrar(`No podés eliminar más de ${libro.stock} ejemplares`, 'error')
     return
   }
 
+  modalCantidadVisible.value = false
+
   if (num === Number(libro.stock)) {
-    if (confirm(`Esto eliminará "${libro.titulo}" completamente del catálogo. ¿Continuar?`)) {
-      await eliminarLibro(libro.titulo)
-      await cargarLibros()
-    }
+    abrirModalConfirm(
+      'Eliminar libro',
+      `Esto eliminará "${libro.titulo}" completamente del catálogo. ¿Continuar?`,
+      'danger',
+      async () => {
+        await eliminarLibro(libro.titulo)
+        mostrar('Libro eliminado del catálogo', 'success')
+        await cargarLibros()
+      }
+    )
   } else {
     await actualizarLibro(libro.titulo, { ...libro, stock: Number(libro.stock) - num })
+    mostrar(`Se eliminaron ${num} ejemplares de "${libro.titulo}"`, 'success')
     await cargarLibros()
   }
 }
@@ -156,7 +212,7 @@ const solicitarRetiro = async (libro) => {
     autor: libro.autor,
     genero: libro.genero
   })
-  alert(`Pedido de retiro de "${libro.titulo}" creado correctamente`)
+  mostrar(`Pedido de retiro de "${libro.titulo}" creado`, 'success')
 }
 
 const solicitarDonacion = async (libro) => {
@@ -169,7 +225,7 @@ const solicitarDonacion = async (libro) => {
     autor: libro.autor,
     genero: libro.genero
   })
-  alert(`Pedido de donación de "${libro.titulo}" creado correctamente`)
+  mostrar(`Pedido de donación de "${libro.titulo}" creado`, 'success')
 }
 
 const abrirFormularioDonacion = () => {
@@ -183,7 +239,7 @@ const cancelarFormularioDonacion = () => {
 
 const enviarDonacionNueva = async () => {
   if (!formularioDonacion.value.titulo || !formularioDonacion.value.autor) {
-    alert('Se deben completar título y autor')
+    mostrar('Se deben completar título y autor', 'error')
     return
   }
 
@@ -196,7 +252,7 @@ const enviarDonacionNueva = async () => {
     autor: formularioDonacion.value.autor,
     genero: formularioDonacion.value.genero
   })
-  alert(`Pedido de donación de "${formularioDonacion.value.titulo}" creado correctamente`)
+  mostrar(`Pedido de donación de "${formularioDonacion.value.titulo}" creado`, 'success')
   mostrandoFormularioDonacion.value = false
 }
 </script>
@@ -204,84 +260,113 @@ const enviarDonacionNueva = async () => {
 <template>
   <div class="catalogo-page">
 
+    <!-- Modal de confirmación -->
+    <AppModal
+      :visible="modalVisible"
+      :title="modalTitulo"
+      :variant="modalVariant"
+      @confirm="confirmarModal"
+      @cancel="cerrarModal"
+      @close="cerrarModal"
+    >
+      {{ modalMensaje }}
+    </AppModal>
+
+    <!-- Modal de cantidad para eliminar -->
+    <AppModal
+      :visible="modalCantidadVisible"
+      title="Eliminar ejemplares"
+      confirm-text="Eliminar"
+      variant="danger"
+      @confirm="confirmarBaja"
+      @cancel="modalCantidadVisible = false"
+      @close="modalCantidadVisible = false"
+    >
+      <p>¿Cuántos ejemplares de "{{ modalCantidadLibro?.titulo }}" deseas eliminar?</p>
+      <p class="stock-info">Stock actual: {{ modalCantidadLibro?.stock }}</p>
+      <input
+        type="number"
+        v-model.number="cantidadEliminar"
+        min="1"
+        :max="modalCantidadLibro?.stock"
+        class="cantidad-input"
+      />
+    </AppModal>
+
     <!-- Formulario alta/modificación (solo admin/bibliotecario) -->
-    <div v-if="mostrandoFormulario && !esUsuario" class="catalogo-card" style="margin-bottom: 20px;">
-      <h3>{{ editando ? 'Modificar Libro' : 'Alta de Libro' }}</h3>
-      <form @submit.prevent="guardarLibro" style="display: flex; flex-direction: column; gap: 10px; max-width: 400px; margin-top: 15px;">
-        <div>
-          <label style="display:block; font-weight: bold; margin-bottom: 5px;">Título:</label>
-          <input class="search-input" style="width: 100%;" v-model="formulario.titulo" required />
-        </div>
+    <Transition name="slide-down">
+      <AppCard v-if="mostrandoFormulario && !esUsuario" class="formulario-card">
+        <h3>{{ editando ? 'Modificar Libro' : 'Alta de Libro' }}</h3>
+        <form @submit.prevent="guardarLibro" class="formulario">
+          <FormField label="Título" :required="true">
+            <input v-model="formulario.titulo" required />
+          </FormField>
 
-        <div>
-          <label style="display:block; font-weight: bold; margin-bottom: 5px;">Autor:</label>
-          <input class="search-input" style="width: 100%;" v-model="formulario.autor" required />
-        </div>
+          <FormField label="Autor" :required="true">
+            <input v-model="formulario.autor" required />
+          </FormField>
 
-        <div>
-          <label style="display:block; font-weight: bold; margin-bottom: 5px;">Género:</label>
-          <input class="search-input" style="width: 100%;" v-model="formulario.genero" />
-        </div>
+          <FormField label="Género">
+            <input v-model="formulario.genero" />
+          </FormField>
 
-        <div>
-          <label style="display:block; font-weight: bold; margin-bottom: 5px;">Stock:</label>
-          <input class="search-input" style="width: 100%;" type="number" v-model="formulario.stock" />
-        </div>
+          <FormField label="Stock">
+            <input type="number" v-model="formulario.stock" />
+          </FormField>
 
-        <div style="display: flex; gap: 10px; margin-top: 10px;">
-          <button type="submit" style="background-color: #4CAF50; color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer;">
-            {{ editando ? 'Guardar Cambios' : 'Registrar' }}
-          </button>
-          <button type="button" @click="cancelarFormulario" style="background-color: #f44336; color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer;">
-            Cancelar
-          </button>
-        </div>
-      </form>
-    </div>
+          <div class="form-actions">
+            <AppButton type="submit" variant="success">
+              {{ editando ? 'Guardar Cambios' : 'Registrar' }}
+            </AppButton>
+            <AppButton type="button" variant="danger" @click="cancelarFormulario">
+              Cancelar
+            </AppButton>
+          </div>
+        </form>
+      </AppCard>
+    </Transition>
 
     <!-- Formulario donación de libro nuevo (solo usuario) -->
-    <div v-if="mostrandoFormularioDonacion && esUsuario" class="catalogo-card" style="margin-bottom: 20px;">
-      <h3>Donar Libro Nuevo</h3>
-      <form @submit.prevent="enviarDonacionNueva" style="display: flex; flex-direction: column; gap: 10px; max-width: 400px; margin-top: 15px;">
-        <div>
-          <label style="display:block; font-weight: bold; margin-bottom: 5px;">Título:</label>
-          <input class="search-input" style="width: 100%;" v-model="formularioDonacion.titulo" required />
-        </div>
+    <Transition name="slide-down">
+      <AppCard v-if="mostrandoFormularioDonacion && esUsuario" class="formulario-card">
+        <h3>Donar Libro Nuevo</h3>
+        <form @submit.prevent="enviarDonacionNueva" class="formulario">
+          <FormField label="Título" :required="true">
+            <input v-model="formularioDonacion.titulo" required />
+          </FormField>
 
-        <div>
-          <label style="display:block; font-weight: bold; margin-bottom: 5px;">Autor:</label>
-          <input class="search-input" style="width: 100%;" v-model="formularioDonacion.autor" required />
-        </div>
+          <FormField label="Autor" :required="true">
+            <input v-model="formularioDonacion.autor" required />
+          </FormField>
 
-        <div>
-          <label style="display:block; font-weight: bold; margin-bottom: 5px;">Género:</label>
-          <input class="search-input" style="width: 100%;" v-model="formularioDonacion.genero" />
-        </div>
+          <FormField label="Género">
+            <input v-model="formularioDonacion.genero" />
+          </FormField>
 
-        <div style="display: flex; gap: 10px; margin-top: 10px;">
-          <button type="submit" style="background-color: #4CAF50; color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer;">
-            Enviar Donación
-          </button>
-          <button type="button" @click="cancelarFormularioDonacion" style="background-color: #f44336; color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer;">
-            Cancelar
-          </button>
-        </div>
-      </form>
-    </div>
+          <div class="form-actions">
+            <AppButton type="submit" variant="success">
+              Enviar Donación
+            </AppButton>
+            <AppButton type="button" variant="danger" @click="cancelarFormularioDonacion">
+              Cancelar
+            </AppButton>
+          </div>
+        </form>
+      </AppCard>
+    </Transition>
 
-    <div class="catalogo-card">
-
-      <div class="catalogo-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <AppCard>
+      <div class="catalogo-header">
         <h2>Catálogo de Libros</h2>
-        <button v-if="!esUsuario" @click="abrirAlta" style="background-color: #008CBA; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+        <AppButton v-if="!esUsuario" variant="primary" @click="abrirAlta">
           Nuevo Libro
-        </button>
-        <button v-if="esUsuario" @click="abrirFormularioDonacion" style="background-color: #4CAF50; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+        </AppButton>
+        <AppButton v-if="esUsuario" variant="success" @click="abrirFormularioDonacion">
           Donar libro nuevo
-        </button>
+        </AppButton>
       </div>
 
-      <div class="catalogo-header" style="margin-top: 15px;">
+      <div class="catalogo-search">
         <input
           class="search-input"
           v-model="busqueda"
@@ -290,67 +375,201 @@ const enviarDonacionNueva = async () => {
         />
       </div>
 
-      <table>
+      <LoadingSpinner v-if="cargando" />
 
-        <thead>
-          <tr>
-            <th>Título</th>
-            <th>Autor</th>
-            <th>Género</th>
-            <th>Stock</th>
-            <th style="text-align: center;">Acciones</th>
-          </tr>
-        </thead>
+      <template v-else>
+        <EmptyState
+          v-if="librosFiltrados.length === 0"
+          icon="📚"
+          title="No se encontraron libros"
+          :description="busqueda ? 'Probá con otro término de búsqueda.' : 'Todavía no hay libros en el catálogo.'"
+        />
 
-        <tbody>
-          <tr
-            v-for="libro in librosPaginados"
-            :key="libro.id"
-          >
-            <td>{{ libro.titulo }}</td>
-            <td>{{ libro.autor }}</td>
-            <td>{{ libro.genero }}</td>
-            <td>{{ libro.stock }}</td>
-            <td style="text-align: center;">
-              <!-- Acciones admin/bibliotecario -->
-              <template v-if="!esUsuario">
-                <button @click="abrirModificacion(libro)" style="background: none; border: none; cursor: pointer; font-size: 14px; margin-right: 10px; color: #008CBA;" type="button" title="Editar">Editar</button>
-                <button @click="ejecutarBaja(libro)" style="background: none; border: none; cursor: pointer; font-size: 14px; color: #f44336;" type="button" title="Eliminar">Eliminar</button>
-              </template>
-              <!-- Acciones usuario -->
-              <template v-if="esUsuario">
-                <button v-if="Number(libro.stock) > 0" @click="solicitarRetiro(libro)" style="background: none; border: none; cursor: pointer; font-size: 14px; margin-right: 10px; color: #f59e0b; font-weight: bold;" type="button">Retirar</button>
-                <button @click="solicitarDonacion(libro)" style="background: none; border: none; cursor: pointer; font-size: 14px; color: #10b981; font-weight: bold;" type="button">Donar</button>
-              </template>
-            </td>
-          </tr>
-        </tbody>
+        <template v-else>
+          <table>
+            <thead>
+              <tr>
+                <th>Título</th>
+                <th>Autor</th>
+                <th>Género</th>
+                <th>Stock</th>
+                <th class="th-acciones">Acciones</th>
+              </tr>
+            </thead>
 
-      </table>
+            <tbody>
+              <tr
+                v-for="libro in librosPaginados"
+                :key="libro.id"
+              >
+                <td>{{ libro.titulo }}</td>
+                <td>{{ libro.autor }}</td>
+                <td>{{ libro.genero }}</td>
+                <td>{{ libro.stock }}</td>
+                <td class="td-acciones">
+                  <template v-if="!esUsuario">
+                    <AppButton size="sm" variant="outline" @click="abrirModificacion(libro)">
+                      Editar
+                    </AppButton>
+                    <AppButton size="sm" variant="danger" @click="ejecutarBaja(libro)">
+                      Eliminar
+                    </AppButton>
+                  </template>
+                  <template v-if="esUsuario">
+                    <AppButton
+                      v-if="Number(libro.stock) > 0"
+                      size="sm"
+                      variant="outline"
+                      @click="solicitarRetiro(libro)"
+                    >
+                      Retirar
+                    </AppButton>
+                    <AppButton size="sm" variant="success" @click="solicitarDonacion(libro)">
+                      Donar
+                    </AppButton>
+                  </template>
+                </td>
+              </tr>
+            </tbody>
+          </table>
 
-      <div v-if="totalPaginas > 1" style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px;">
-        <button
-          @click="paginaActual--"
-          :disabled="paginaActual === 1"
-          style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; cursor: pointer;"
-          :style="{ opacity: paginaActual === 1 ? 0.5 : 1 }"
-        >
-          Anterior
-        </button>
-        <span style="font-size: 0.9rem; color: #475569;">
-          Página {{ paginaActual }} de {{ totalPaginas }}
-        </span>
-        <button
-          @click="paginaActual++"
-          :disabled="paginaActual === totalPaginas"
-          style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; cursor: pointer;"
-          :style="{ opacity: paginaActual === totalPaginas ? 0.5 : 1 }"
-        >
-          Siguiente
-        </button>
-      </div>
-
-    </div>
+          <div v-if="totalPaginas > 1" class="paginacion">
+            <AppButton
+              size="sm"
+              variant="outline"
+              @click="paginaActual--"
+              :disabled="paginaActual === 1"
+            >
+              Anterior
+            </AppButton>
+            <span class="paginacion-info">
+              Página {{ paginaActual }} de {{ totalPaginas }}
+            </span>
+            <AppButton
+              size="sm"
+              variant="outline"
+              @click="paginaActual++"
+              :disabled="paginaActual === totalPaginas"
+            >
+              Siguiente
+            </AppButton>
+          </div>
+        </template>
+      </template>
+    </AppCard>
 
   </div>
 </template>
+
+<style scoped>
+.catalogo-page {
+  min-height: 100vh;
+  padding: var(--space-lg);
+}
+
+.formulario-card {
+  max-width: 1200px;
+  margin: 0 auto var(--space-lg);
+}
+
+.formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 420px;
+  margin-top: var(--space-md);
+}
+
+.formulario input {
+  width: 100%;
+}
+
+.form-actions {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.catalogo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-lg);
+}
+
+.catalogo-search {
+  margin-bottom: var(--space-lg);
+}
+
+.search-input {
+  width: 300px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+thead {
+  background: var(--color-primary);
+}
+
+thead th {
+  color: var(--color-text-inverse);
+  font-weight: 600;
+}
+
+th,
+td {
+  padding: 14px;
+  text-align: left;
+}
+
+.th-acciones {
+  text-align: center;
+}
+
+tbody tr {
+  border-bottom: 1px solid var(--color-border);
+  transition: background-color var(--transition-fast);
+}
+
+tbody tr:hover {
+  background: #f9fafb;
+}
+
+.td-acciones {
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  gap: var(--space-sm);
+}
+
+.paginacion {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-lg);
+}
+
+.paginacion-info {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.stock-info {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin: var(--space-sm) 0;
+}
+
+.cantidad-input {
+  width: 100%;
+  margin-top: var(--space-sm);
+}
+
+h3 {
+  margin-bottom: var(--space-sm);
+}
+</style>
