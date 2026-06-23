@@ -21,6 +21,7 @@ const todosLosItems = [
   { label: 'Operaciones', icon: '⚙️',  to: '/operaciones', roles: ['admin', 'bibliotecario'] },
   { label: 'Usuarios',    icon: '👥', to: '/usuarios',    roles: ['admin'] },
   { label: 'Informes',    icon: '📊', to: '/informes',    roles: ['admin', 'bibliotecario'] },
+  { label: 'Mis Operaciones', icon: '📋', to: '/mis-operaciones', roles: ['usuario'] },
 ]
 
 const navItems = computed(() =>
