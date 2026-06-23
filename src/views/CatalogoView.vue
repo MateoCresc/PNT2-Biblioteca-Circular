@@ -117,8 +117,27 @@ const guardarLibro = async () => {
 }
 
 const ejecutarBaja = async (libro) => {
-  if (confirm(`¿Estás seguro de que deseas eliminar a ${libro.titulo} del catálogo?`)) {
-    await eliminarLibro(libro.titulo)
+  const cantidad = prompt(`¿Cuántos ejemplares de "${libro.titulo}" deseas eliminar? (Stock actual: ${libro.stock})`)
+  if (cantidad === null) return
+
+  const num = Number(cantidad)
+  if (isNaN(num) || num <= 0 || !Number.isInteger(num)) {
+    alert('Ingresá un número entero mayor a 0')
+    return
+  }
+
+  if (num > Number(libro.stock)) {
+    alert(`No podés eliminar más de ${libro.stock} ejemplares`)
+    return
+  }
+
+  if (num === Number(libro.stock)) {
+    if (confirm(`Esto eliminará "${libro.titulo}" completamente del catálogo. ¿Continuar?`)) {
+      await eliminarLibro(libro.titulo)
+      await cargarLibros()
+    }
+  } else {
+    await actualizarLibro(libro.titulo, { ...libro, stock: Number(libro.stock) - num })
     await cargarLibros()
   }
 }
@@ -184,18 +203,6 @@ const enviarDonacionNueva = async () => {
 
 <template>
   <div class="catalogo-page">
-
-    <header class="topbar">
-
-      <div>
-        <h1>📚 Biblioteca Digital</h1>
-      </div>
-
-      <div class="usuario-box">
-        <span>{{ usuario.nombre }}</span>
-      </div>
-
-    </header>
 
     <!-- Formulario alta/modificación (solo admin/bibliotecario) -->
     <div v-if="mostrandoFormulario && !esUsuario" class="catalogo-card" style="margin-bottom: 20px;">

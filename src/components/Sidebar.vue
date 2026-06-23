@@ -1,20 +1,7 @@
 <script setup>
 import { computed } from 'vue'
-import { useRouter } from 'vue-router'
-
-const router = useRouter()
-
-const volver = () => {
-  router.back()
-}
-
 
 const usuario = JSON.parse(localStorage.getItem('usuario'))
-
-const cerrarSesion = () => {
-  localStorage.removeItem('usuario')
-  router.push('/login')
-}
 
 const todosLosItems = [
   { label: 'Catálogo',    icon: '📚', to: '/catalogo',    roles: ['admin', 'bibliotecario', 'usuario'] },
@@ -49,12 +36,6 @@ const navItems = computed(() =>
       </RouterLink>
     </nav>
 
-    <div class="sidebar-footer">
-      <button class="logout-btn" @click="cerrarSesion">
-        <span>🚪</span>
-        <span>Cerrar sesión</span>
-      </button>
-    </div>
   </aside>
 </template>
 
@@ -128,28 +109,4 @@ const navItems = computed(() =>
   font-weight: 500;
 }
 
-.sidebar-footer {
-  padding: 16px 8px;
-  border-top: 1px solid #334155;
-}
-
-.logout-btn {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 20px;
-  background: none;
-  border: none;
-  color: #94a3b8;
-  font-size: 0.95rem;
-  cursor: pointer;
-  border-radius: 6px;
-  transition: background-color 0.15s, color 0.15s;
-}
-
-.logout-btn:hover {
-  background-color: #334155;
-  color: #f87171;
-}
 </style>

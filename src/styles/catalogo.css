@@ -3,32 +3,6 @@
   background: #f3f4f6;
 }
 
-.topbar {
-  background: #1e40af;
-  color: white;
-
-  padding: 18px 40px;
-
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.usuario-box {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-
-.logout-btn {
-  background: white;
-  color: #1e40af;
-
-  padding: 10px 16px;
-  border-radius: 8px;
-  font-weight: bold;
-}
-
 .catalogo-card {
   max-width: 1200px;
   margin: 30px auto;
