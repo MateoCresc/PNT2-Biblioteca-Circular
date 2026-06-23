@@ -2,13 +2,22 @@
 import { ref, onMounted } from 'vue'
 import { obtenerLibros, actualizarLibro, agregarLibro } from '../services/librosService'
 import { obtenerOperaciones, actualizarOperacion } from '../services/operacionesService'
+import { useToast } from '../composables/useToast'
+import AppButton from '../components/AppButton.vue'
+import AppCard from '../components/AppCard.vue'
+import StatusBadge from '../components/StatusBadge.vue'
+import LoadingSpinner from '../components/LoadingSpinner.vue'
+import EmptyState from '../components/EmptyState.vue'
 
+const { mostrar } = useToast()
 const operaciones = ref([])
 const libros = ref([])
+const cargando = ref(true)
 
 onMounted(async () => {
   libros.value = await obtenerLibros()
   operaciones.value = await obtenerOperaciones()
+  cargando.value = false
 })
 
 const aprobarOperacion = async (operacion) => {
@@ -16,12 +25,12 @@ const aprobarOperacion = async (operacion) => {
     const libro = libros.value.find(l => l.id == operacion.libroId)
 
     if (!libro) {
-      alert('No se encontró el libro')
+      mostrar('No se encontró el libro', 'error')
       return
     }
 
     if (Number(libro.stock) <= 0) {
-      alert('No hay stock disponible')
+      mostrar('No hay stock disponible', 'warning')
       return
     }
 
@@ -32,7 +41,7 @@ const aprobarOperacion = async (operacion) => {
       const libro = libros.value.find(l => l.id == operacion.libroId)
 
       if (!libro) {
-        alert('No se encontró el libro')
+        mostrar('No se encontró el libro', 'error')
         return
       }
 
@@ -51,156 +60,120 @@ const aprobarOperacion = async (operacion) => {
   await actualizarOperacion(operacion.id, { estado: 'aprobada' })
   operacion.estado = 'aprobada'
   libros.value = await obtenerLibros()
+  mostrar('Operación aprobada', 'success')
 }
 
 const rechazarOperacion = async (operacion) => {
   await actualizarOperacion(operacion.id, { estado: 'rechazada' })
   operacion.estado = 'rechazada'
+  mostrar('Operación rechazada', 'success')
 }
 </script>
 
 <template>
-  <div class="contenido">
+  <div class="operaciones-page">
 
-      <h2>Operaciones Pendientes</h2>
+    <h2>Operaciones Pendientes</h2>
 
-      <table class="tabla-operaciones">
+    <LoadingSpinner v-if="cargando" />
 
-        <thead>
-          <tr>
-            <th>Tipo</th>
-            <th>Libro</th>
-            <th>Autor</th>
-            <th>Usuario</th>
-            <th>Fecha</th>
-            <th>Estado</th>
-            <th>Acción</th>
-          </tr>
-        </thead>
+    <template v-else>
+      <EmptyState
+        v-if="operaciones.length === 0"
+        icon="⚙️"
+        title="No hay operaciones"
+        description="Todavía no se registraron operaciones."
+      />
 
-        <tbody>
+      <AppCard v-else>
+        <table class="tabla-operaciones">
+          <thead>
+            <tr>
+              <th>Tipo</th>
+              <th>Libro</th>
+              <th>Autor</th>
+              <th>Usuario</th>
+              <th>Fecha</th>
+              <th>Estado</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
 
-          <tr
-            v-for="operacion in operaciones"
-            :key="operacion.id"
-          >
-            <td>{{ operacion.tipo === 'retiro' ? 'Retiro' : 'Donación' }}</td>
-            <td>{{ operacion.titulo }}</td>
-            <td>{{ operacion.autor }}</td>
-            <td>{{ operacion.usuarioNombre }}</td>
-            <td>{{ operacion.fecha }}</td>
-
-            <td>
-              <span
-                class="badge"
-                :class="{
-                  pendiente: operacion.estado === 'pendiente',
-                  aprobada: operacion.estado === 'aprobada',
-                  rechazada: operacion.estado === 'rechazada'
-                }"
-              >
-                {{ operacion.estado === 'pendiente' ? '⏳' :
-                   operacion.estado === 'aprobada' ? '✅' : '❌' }}
-                {{ operacion.estado.charAt(0).toUpperCase() + operacion.estado.slice(1) }}
-              </span>
-            </td>
-
-            <td>
-
-              <template v-if="operacion.estado === 'pendiente'">
-
-                <button
-                  class="btn-aprobar"
-                  @click="aprobarOperacion(operacion)"
-                >
-                  Aprobar
-                </button>
-
-                <button
-                  class="btn-rechazar"
-                  @click="rechazarOperacion(operacion)"
-                >
-                  Rechazar
-                </button>
-
-              </template>
-
-              <template v-else>
-                -
-              </template>
-
-            </td>
-
-          </tr>
-
-        </tbody>
-
-      </table>
+          <tbody>
+            <tr
+              v-for="operacion in operaciones"
+              :key="operacion.id"
+            >
+              <td>{{ operacion.tipo === 'retiro' ? 'Retiro' : 'Donación' }}</td>
+              <td>{{ operacion.titulo }}</td>
+              <td>{{ operacion.autor }}</td>
+              <td>{{ operacion.usuarioNombre }}</td>
+              <td>{{ operacion.fecha }}</td>
+              <td>
+                <StatusBadge :estado="operacion.estado" />
+              </td>
+              <td>
+                <template v-if="operacion.estado === 'pendiente'">
+                  <div class="acciones">
+                    <AppButton size="sm" variant="success" @click="aprobarOperacion(operacion)">
+                      Aprobar
+                    </AppButton>
+                    <AppButton size="sm" variant="danger" @click="rechazarOperacion(operacion)">
+                      Rechazar
+                    </AppButton>
+                  </div>
+                </template>
+                <template v-else>
+                  -
+                </template>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </AppCard>
+    </template>
 
   </div>
 </template>
 
 <style scoped>
-
-
-.contenido {
-  flex: 1;
-  padding: 20px;
+.operaciones-page {
+  padding: var(--space-lg);
 }
 
 h2 {
-  margin-bottom: 20px;
+  margin-bottom: var(--space-lg);
 }
 
 .tabla-operaciones {
   width: 100%;
   border-collapse: collapse;
-  background: var(--card);
 }
 
 .tabla-operaciones th,
 .tabla-operaciones td {
-  border: 1px solid var(--border);
+  border: 1px solid var(--color-border);
   padding: 12px;
   text-align: left;
+  font-size: var(--font-size-sm);
 }
 
 .tabla-operaciones th {
-  background: var(--primary);
-  color: white;
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  font-weight: 600;
 }
 
-.badge {
-  font-size: 0.9rem;
-  padding: 0.5rem 0.8rem;
-  border-radius: 6px;
-  color: white;
+.tabla-operaciones tbody tr {
+  transition: background-color var(--transition-fast);
 }
 
-.pendiente {
-  background-color: #f59e0b;
+.tabla-operaciones tbody tr:hover {
+  background: #f9fafb;
 }
 
-.aprobada {
-  background-color: #10b981;
-}
-
-.rechazada {
-  background-color: #ef4444;
-}
-
-.btn-aprobar {
-  background-color: #10b981;
-  color: white;
-  padding: 8px 12px;
-  border-radius: 6px;
-  margin-right: 8px;
-}
-
-.btn-rechazar {
-  background-color: #ef4444;
-  color: white;
-  padding: 8px 12px;
-  border-radius: 6px;
+.acciones {
+  display: flex;
+  gap: var(--space-sm);
 }
 </style>

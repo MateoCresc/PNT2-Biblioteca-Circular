@@ -2,6 +2,8 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 
+defineEmits(['toggle-sidebar'])
+
 const router = useRouter()
 const usuario = JSON.parse(localStorage.getItem('usuario'))
 const dropdownAbierto = ref(false)
@@ -28,8 +30,11 @@ const cerrarSesion = () => {
 
 <template>
   <header class="topbar">
-    <div>
-      <h1 class="topbar-titulo">📚 Biblioteca Digital</h1>
+    <div class="topbar-left">
+      <button class="hamburger" @click="$emit('toggle-sidebar')">
+        ☰
+      </button>
+      <h1 class="topbar-titulo">Biblioteca Digital</h1>
     </div>
 
     <div class="usuario-dropdown" ref="dropdownRef" @click="toggleDropdown">
@@ -37,19 +42,21 @@ const cerrarSesion = () => {
       <span class="usuario-rol">({{ usuario?.rol }})</span>
       <span class="dropdown-arrow">▼</span>
 
-      <div v-if="dropdownAbierto" class="dropdown-menu">
-        <button class="dropdown-item" @click="cerrarSesion">
-          🚪 Cerrar sesión
-        </button>
-      </div>
+      <Transition name="dropdown">
+        <div v-if="dropdownAbierto" class="dropdown-menu">
+          <button class="dropdown-item" @click="cerrarSesion">
+            Cerrar sesión
+          </button>
+        </div>
+      </Transition>
     </div>
   </header>
 </template>
 
 <style scoped>
 .topbar {
-  background: #1e40af;
-  color: white;
+  background: var(--color-topbar);
+  color: var(--color-text-inverse);
   padding: 14px 30px;
   display: flex;
   justify-content: space-between;
@@ -57,20 +64,48 @@ const cerrarSesion = () => {
   flex-shrink: 0;
 }
 
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.hamburger {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--color-text-inverse);
+  font-size: 1.4rem;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-fast);
+}
+
+.hamburger:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+@media (max-width: 768px) {
+  .hamburger {
+    display: block;
+  }
+}
+
 .topbar-titulo {
-  font-size: 1.2rem;
+  font-size: var(--font-size-lg);
   font-weight: 700;
+  color: var(--color-text-inverse);
 }
 
 .usuario-dropdown {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-sm);
   cursor: pointer;
-  padding: 8px 14px;
-  border-radius: 8px;
-  transition: background-color 0.15s;
+  padding: var(--space-sm) 14px;
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-fast);
 }
 
 .usuario-dropdown:hover {
@@ -79,11 +114,11 @@ const cerrarSesion = () => {
 
 .usuario-nombre {
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: var(--font-size-sm);
 }
 
 .usuario-rol {
-  font-size: 0.85rem;
+  font-size: var(--font-size-xs);
   opacity: 0.8;
 }
 
@@ -97,9 +132,9 @@ const cerrarSesion = () => {
   top: 100%;
   right: 0;
   margin-top: 6px;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  background: var(--color-card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
   min-width: 180px;
   z-index: 100;
   overflow: hidden;
@@ -107,21 +142,36 @@ const cerrarSesion = () => {
 
 .dropdown-item {
   width: 100%;
-  padding: 12px 16px;
+  padding: 12px var(--space-md);
   border: none;
   background: none;
-  color: #334155;
-  font-size: 0.9rem;
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
   cursor: pointer;
   text-align: left;
   display: flex;
   align-items: center;
-  gap: 8px;
-  transition: background-color 0.15s;
+  gap: var(--space-sm);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 
 .dropdown-item:hover {
   background-color: #fee2e2;
-  color: #dc2626;
+  color: var(--color-danger);
+}
+
+/* Dropdown transition */
+.dropdown-enter-active {
+  transition: all 0.15s ease-out;
+}
+
+.dropdown-leave-active {
+  transition: all 0.1s ease-in;
+}
+
+.dropdown-enter-from,
+.dropdown-leave-to {
+  opacity: 0;
+  transform: translateY(-5px);
 }
 </style>
