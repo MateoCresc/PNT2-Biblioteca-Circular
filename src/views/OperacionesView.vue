@@ -1,40 +1,61 @@
 <script setup>
-//import Sidebar from '../components/Sidebar.vue'
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { obtenerLibros, actualizarLibro, agregarLibro } from '../services/librosService'
+import { obtenerOperaciones, actualizarOperacion } from '../services/operacionesService'
 
-const operaciones = ref([
-  {
-    id: 1,
-    tipo: 'Préstamo',
-    libro: 'El Principito',
-    autor: 'Antoine de Saint-Exupéry',
-    usuario: 'Franco',
-    estado: 'Pendiente'
-  },
-  {
-    id: 2,
-    tipo: 'Devolución',
-    libro: '1984',
-    autor: 'George Orwell',
-    usuario: 'Ana',
-    estado: 'Pendiente'
-  },
-  {
-    id: 3,
-    tipo: 'Venta',
-    libro: 'Clean Code',
-    autor: 'Robert Martin',
-    usuario: 'Juan',
-    estado: 'Pendiente'
+const operaciones = ref([])
+const libros = ref([])
+
+onMounted(async () => {
+  libros.value = await obtenerLibros()
+  operaciones.value = await obtenerOperaciones()
+})
+
+const aprobarOperacion = async (operacion) => {
+  if (operacion.tipo === 'retiro') {
+    const libro = libros.value.find(l => l.id == operacion.libroId)
+
+    if (!libro) {
+      alert('No se encontró el libro')
+      return
+    }
+
+    if (Number(libro.stock) <= 0) {
+      alert('No hay stock disponible')
+      return
+    }
+
+    libro.stock = Number(libro.stock) - 1
+    await actualizarLibro(libro.titulo, libro)
+  } else if (operacion.tipo === 'donacion') {
+    if (operacion.libroId) {
+      const libro = libros.value.find(l => l.id == operacion.libroId)
+
+      if (!libro) {
+        alert('No se encontró el libro')
+        return
+      }
+
+      libro.stock = Number(libro.stock) + 1
+      await actualizarLibro(libro.titulo, libro)
+    } else {
+      await agregarLibro({
+        titulo: operacion.titulo,
+        autor: operacion.autor,
+        genero: operacion.genero,
+        stock: 1
+      })
+    }
   }
-])
 
-const aprobarOperacion = (operacion) => {
-  operacion.estado = 'Aprobada'
+  await actualizarOperacion(operacion.id, { estado: 'aprobada' })
+  operacion.estado = 'aprobada'
+  libros.value = await obtenerLibros()
 }
 
-const rechazarOperacion = (operacion) => {
-  operacion.estado = 'Rechazada'
+const rechazarOperacion = async (operacion) => {
+  await actualizarOperacion(operacion.id, { estado: 'rechazada' })
+  operacion.estado = 'rechazada'
 }
 </script>
 
@@ -47,11 +68,11 @@ const rechazarOperacion = (operacion) => {
 
         <thead>
           <tr>
-            <th>ID</th>
             <th>Tipo</th>
             <th>Libro</th>
             <th>Autor</th>
             <th>Usuario</th>
+            <th>Fecha</th>
             <th>Estado</th>
             <th>Acción</th>
           </tr>
@@ -63,30 +84,30 @@ const rechazarOperacion = (operacion) => {
             v-for="operacion in operaciones"
             :key="operacion.id"
           >
-            <td>{{ operacion.id }}</td>
-            <td>{{ operacion.tipo }}</td>
-            <td>{{ operacion.libro }}</td>
+            <td>{{ operacion.tipo === 'retiro' ? 'Retiro' : 'Donación' }}</td>
+            <td>{{ operacion.titulo }}</td>
             <td>{{ operacion.autor }}</td>
-            <td>{{ operacion.usuario }}</td>
+            <td>{{ operacion.usuarioNombre }}</td>
+            <td>{{ operacion.fecha }}</td>
 
             <td>
               <span
                 class="badge"
                 :class="{
-                  pendiente: operacion.estado === 'Pendiente',
-                  aprobada: operacion.estado === 'Aprobada',
-                  rechazada: operacion.estado === 'Rechazada'
+                  pendiente: operacion.estado === 'pendiente',
+                  aprobada: operacion.estado === 'aprobada',
+                  rechazada: operacion.estado === 'rechazada'
                 }"
               >
-                {{ operacion.estado === 'Pendiente' ? '⏳' :
-                   operacion.estado === 'Aprobada' ? '✅' : '❌' }}
-                {{ operacion.estado }}
+                {{ operacion.estado === 'pendiente' ? '⏳' :
+                   operacion.estado === 'aprobada' ? '✅' : '❌' }}
+                {{ operacion.estado.charAt(0).toUpperCase() + operacion.estado.slice(1) }}
               </span>
             </td>
 
             <td>
 
-              <template v-if="operacion.estado === 'Pendiente'">
+              <template v-if="operacion.estado === 'pendiente'">
 
                 <button
                   class="btn-aprobar"

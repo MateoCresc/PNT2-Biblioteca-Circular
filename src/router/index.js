@@ -5,6 +5,7 @@ import CatalogoView from '../views/CatalogoView.vue'
 import OperacionesView from '../views/OperacionesView.vue'
 import UsuariosView from '../views/UsuariosView.vue'
 import InformesView from '../views/InformesView.vue'
+import MisOperacionesView from '../views/MisOperacionesView.vue'
 
 const routes = [
   {
@@ -34,6 +35,11 @@ const routes = [
     path: '/informes',
     component: InformesView,
     meta: { roles: ['admin', 'bibliotecario'] }
+  },
+  {
+    path: '/mis-operaciones',
+    component: MisOperacionesView,
+    meta: { roles: ['usuario'] }
   }
 ]
 
