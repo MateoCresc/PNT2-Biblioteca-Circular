@@ -2,32 +2,18 @@
 import { ref, computed, onMounted } from 'vue'
 import { obtenerLibros } from '../services/librosService'
 import { obtenerUsuarios } from '../services/usuariosService'
+import { obtenerOperaciones } from '../services/operacionesService'
 
 const solapaActiva = ref('resumen')
 
 const libros = ref([])
 const usuarios = ref([])
-
-const statsOperaciones = {
-  prestamos: 12,
-  devoluciones: 8,
-  ventas: 4,
-  aprobadas: 18,
-  rechazadas: 3,
-  pendientes: 3
-}
-
-const operacionesRecientes = [
-  { tipo: 'Préstamo',   libro: 'El Principito',       usuario: 'Franco', estado: 'Aprobada'  },
-  { tipo: 'Devolución', libro: '1984',                 usuario: 'Ana',    estado: 'Aprobada'  },
-  { tipo: 'Venta',      libro: 'Clean Code',           usuario: 'Juan',   estado: 'Rechazada' },
-  { tipo: 'Préstamo',   libro: 'Cien años de soledad', usuario: 'María',  estado: 'Pendiente' },
-  { tipo: 'Devolución', libro: 'El Hobbit',            usuario: 'Carlos', estado: 'Aprobada'  },
-]
+const operaciones = ref([])
 
 onMounted(async () => {
   libros.value = await obtenerLibros()
   usuarios.value = await obtenerUsuarios()
+  operaciones.value = await obtenerOperaciones()
 })
 
 const librosConStockBajo = computed(() =>
@@ -52,8 +38,69 @@ const maxGenero = computed(() =>
   Math.max(...generosPorCantidad.value.map(g => g.cantidad), 1)
 )
 
-const maxOperacion = computed(() =>
-  Math.max(statsOperaciones.prestamos, statsOperaciones.devoluciones, statsOperaciones.ventas)
+const totalRetiros = computed(() =>
+  operaciones.value.filter(op => op.tipo === 'retiro').length
+)
+
+const totalDonaciones = computed(() =>
+  operaciones.value.filter(op => op.tipo === 'donacion').length
+)
+
+const retirosAprobados = computed(() =>
+  operaciones.value.filter(op => op.tipo === 'retiro' && op.estado === 'aprobada').length
+)
+
+const operacionesPendientes = computed(() =>
+  operaciones.value.filter(op => op.estado === 'pendiente').length
+)
+
+const operacionesAprobadas = computed(() =>
+  operaciones.value.filter(op => op.estado === 'aprobada').length
+)
+
+const operacionesRechazadas = computed(() =>
+  operaciones.value.filter(op => op.estado === 'rechazada').length
+)
+
+const ratioCircular = computed(() => {
+  const don = operaciones.value.filter(op => op.tipo === 'donacion' && op.estado === 'aprobada').length
+  const ret = retirosAprobados.value
+  if (don === 0 && ret === 0) return '0:0'
+  if (ret === 0) return `${don} solo donaciones`
+  const ratio = don / ret
+  return Number.isInteger(ratio) ? `${ratio}:1` : `${ratio.toFixed(1)}:1`
+})
+
+const operacionesRecientes = computed(() =>
+  [...operaciones.value]
+    .sort((a, b) => {
+      const [dA, mA, yA] = a.fecha.split('/').map(Number)
+      const [dB, mB, yB] = b.fecha.split('/').map(Number)
+      return new Date(yB, mB - 1, dB) - new Date(yA, mA - 1, dA)
+    })
+    .slice(0, 5)
+)
+
+const maxOperacionTipo = computed(() =>
+  Math.max(totalRetiros.value, totalDonaciones.value, 1)
+)
+
+const usuariosInactivos = computed(() =>
+  usuarios.value.filter(u => u.estado === 'inactivo').length
+)
+
+const rolesPorCantidad = computed(() => {
+  const conteo = {}
+  usuarios.value.forEach(u => {
+    if (u.rol) conteo[u.rol] = (conteo[u.rol] || 0) + 1
+  })
+  return Object.entries(conteo)
+    .map(([rol, cantidad]) => ({ rol, cantidad }))
+    .sort((a, b) => b.cantidad - a.cantidad)
+})
+
+const maxRol = computed(() =>
+  Math.max(...rolesPorCantidad.value.map(r => r.cantidad), 1)
 )
 </script>
 
@@ -67,7 +114,7 @@ const maxOperacion = computed(() =>
     <!-- Solapas -->
     <div class="solapas">
       <button
-        v-for="solapa in ['resumen', 'libros', 'operaciones']"
+        v-for="solapa in ['resumen', 'libros', 'operaciones', 'usuarios']"
         :key="solapa"
         class="solapa-btn"
         :class="{ activa: solapaActiva === solapa }"
@@ -86,43 +133,70 @@ const maxOperacion = computed(() =>
           <span class="kpi-label">Total libros</span>
         </div>
         <div class="kpi-card">
-          <span class="kpi-valor">{{ statsOperaciones.prestamos }}</span>
-          <span class="kpi-label">Préstamos activos</span>
-        </div>
-        <div class="kpi-card">
           <span class="kpi-valor">{{ usuariosActivos }}</span>
           <span class="kpi-label">Usuarios activos</span>
         </div>
+        <div class="kpi-card">
+          <span class="kpi-valor">{{ retirosAprobados }}</span>
+          <span class="kpi-label">Retiros aprobados</span>
+        </div>
         <div class="kpi-card kpi-alerta">
-          <span class="kpi-valor">{{ librosConStockBajo.length }}</span>
-          <span class="kpi-label">Stock bajo</span>
+          <span class="kpi-valor">{{ operacionesPendientes }}</span>
+          <span class="kpi-label">Pendientes</span>
         </div>
       </div>
 
-      <div class="seccion">
-        <h3>Operaciones por tipo</h3>
-        <div class="barras">
-          <div class="barra-fila">
-            <span class="barra-label">Préstamos</span>
-            <div class="barra-track">
-              <div class="barra-fill azul" :style="{ width: (statsOperaciones.prestamos / maxOperacion * 100) + '%' }"></div>
+      <div class="resumen-cols">
+        <div class="seccion">
+          <h3>Operaciones por tipo</h3>
+          <div class="barras">
+            <div class="barra-fila">
+              <span class="barra-label">Retiros</span>
+              <div class="barra-track">
+                <div class="barra-fill azul" :style="{ width: (totalRetiros / maxOperacionTipo * 100) + '%' }"></div>
+              </div>
+              <span class="barra-valor">{{ totalRetiros }}</span>
             </div>
-            <span class="barra-valor">{{ statsOperaciones.prestamos }}</span>
-          </div>
-          <div class="barra-fila">
-            <span class="barra-label">Devoluciones</span>
-            <div class="barra-track">
-              <div class="barra-fill verde" :style="{ width: (statsOperaciones.devoluciones / maxOperacion * 100) + '%' }"></div>
+            <div class="barra-fila">
+              <span class="barra-label">Donaciones</span>
+              <div class="barra-track">
+                <div class="barra-fill verde" :style="{ width: (totalDonaciones / maxOperacionTipo * 100) + '%' }"></div>
+              </div>
+              <span class="barra-valor">{{ totalDonaciones }}</span>
             </div>
-            <span class="barra-valor">{{ statsOperaciones.devoluciones }}</span>
           </div>
-          <div class="barra-fila">
-            <span class="barra-label">Ventas</span>
-            <div class="barra-track">
-              <div class="barra-fill naranja" :style="{ width: (statsOperaciones.ventas / maxOperacion * 100) + '%' }"></div>
-            </div>
-            <span class="barra-valor">{{ statsOperaciones.ventas }}</span>
-          </div>
+        </div>
+
+        <div class="seccion">
+          <h3>Últimas operaciones</h3>
+          <p v-if="operacionesRecientes.length === 0" class="vacio">No hay operaciones registradas.</p>
+          <table v-else class="tabla">
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Libro</th>
+                <th>Usuario</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(op, i) in operacionesRecientes" :key="i">
+                <td>{{ op.tipo === 'retiro' ? 'Retiro' : 'Donación' }}</td>
+                <td>{{ op.titulo }}</td>
+                <td>{{ op.usuarioNombre }}</td>
+                <td>
+                  <span class="badge" :class="{
+                    pendiente: op.estado === 'pendiente',
+                    aprobada:  op.estado === 'aprobada',
+                    rechazada: op.estado === 'rechazada'
+                  }">
+                    {{ op.estado === 'pendiente' ? '⏳' : op.estado === 'aprobada' ? '✅' : '❌' }}
+                    {{ op.estado.charAt(0).toUpperCase() + op.estado.slice(1) }}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -172,50 +246,90 @@ const maxOperacion = computed(() =>
     <!-- OPERACIONES -->
     <div v-if="solapaActiva === 'operaciones'" class="contenido">
 
-      <div class="kpi-grid kpi-grid-3">
+      <div class="kpi-grid">
         <div class="kpi-card kpi-verde">
-          <span class="kpi-valor">{{ statsOperaciones.aprobadas }}</span>
+          <span class="kpi-valor">{{ operacionesAprobadas }}</span>
           <span class="kpi-label">Aprobadas</span>
         </div>
         <div class="kpi-card kpi-rojo">
-          <span class="kpi-valor">{{ statsOperaciones.rechazadas }}</span>
+          <span class="kpi-valor">{{ operacionesRechazadas }}</span>
           <span class="kpi-label">Rechazadas</span>
         </div>
         <div class="kpi-card kpi-amarillo">
-          <span class="kpi-valor">{{ statsOperaciones.pendientes }}</span>
+          <span class="kpi-valor">{{ operacionesPendientes }}</span>
           <span class="kpi-label">Pendientes</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-valor kpi-ratio">{{ ratioCircular }}</span>
+          <span class="kpi-label">Ratio Don/Ret</span>
         </div>
       </div>
 
       <div class="seccion">
         <h3>Operaciones recientes</h3>
-        <table class="tabla">
+        <p v-if="operacionesRecientes.length === 0" class="vacio">No hay operaciones registradas.</p>
+        <table v-else class="tabla">
           <thead>
             <tr>
               <th>Tipo</th>
               <th>Libro</th>
               <th>Usuario</th>
+              <th>Fecha</th>
               <th>Estado</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="(op, i) in operacionesRecientes" :key="i">
-              <td>{{ op.tipo }}</td>
-              <td>{{ op.libro }}</td>
-              <td>{{ op.usuario }}</td>
+              <td>{{ op.tipo === 'retiro' ? 'Retiro' : 'Donación' }}</td>
+              <td>{{ op.titulo }}</td>
+              <td>{{ op.usuarioNombre }}</td>
+              <td>{{ op.fecha }}</td>
               <td>
                 <span class="badge" :class="{
-                  pendiente: op.estado === 'Pendiente',
-                  aprobada:  op.estado === 'Aprobada',
-                  rechazada: op.estado === 'Rechazada'
+                  pendiente: op.estado === 'pendiente',
+                  aprobada:  op.estado === 'aprobada',
+                  rechazada: op.estado === 'rechazada'
                 }">
-                  {{ op.estado === 'Pendiente' ? '⏳' : op.estado === 'Aprobada' ? '✅' : '❌' }}
-                  {{ op.estado }}
+                  {{ op.estado === 'pendiente' ? '⏳' : op.estado === 'aprobada' ? '✅' : '❌' }}
+                  {{ op.estado.charAt(0).toUpperCase() + op.estado.slice(1) }}
                 </span>
               </td>
             </tr>
           </tbody>
         </table>
+      </div>
+
+    </div>
+
+    <!-- USUARIOS -->
+    <div v-if="solapaActiva === 'usuarios'" class="contenido">
+
+      <div class="kpi-grid kpi-grid-3">
+        <div class="kpi-card">
+          <span class="kpi-valor">{{ usuarios.length }}</span>
+          <span class="kpi-label">Total usuarios</span>
+        </div>
+        <div class="kpi-card kpi-verde">
+          <span class="kpi-valor">{{ usuariosActivos }}</span>
+          <span class="kpi-label">Activos</span>
+        </div>
+        <div class="kpi-card kpi-rojo">
+          <span class="kpi-valor">{{ usuariosInactivos }}</span>
+          <span class="kpi-label">Inactivos</span>
+        </div>
+      </div>
+
+      <div class="seccion">
+        <h3>Distribución por rol</h3>
+        <div class="barras">
+          <div class="barra-fila" v-for="item in rolesPorCantidad" :key="item.rol">
+            <span class="barra-label capitalize">{{ item.rol }}</span>
+            <div class="barra-track">
+              <div class="barra-fill azul" :style="{ width: (item.cantidad / maxRol * 100) + '%' }"></div>
+            </div>
+            <span class="barra-valor">{{ item.cantidad }}</span>
+          </div>
+        </div>
       </div>
 
     </div>
@@ -415,5 +529,22 @@ const maxOperacion = computed(() =>
   color: #94a3b8;
   font-size: 0.9rem;
   padding: 8px 0;
+}
+
+/* Layout columnas resumen */
+.resumen-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+/* Ratio */
+.kpi-ratio {
+  font-size: 1.4rem;
+}
+
+/* Capitalize */
+.capitalize {
+  text-transform: capitalize;
 }
 </style>
