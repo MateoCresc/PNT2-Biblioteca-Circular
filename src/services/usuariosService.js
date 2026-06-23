@@ -25,7 +25,7 @@ export async function crearUsuario(nuevoUsuario) {
   return await response.json()
 }
 
-// Baja
+// Baja lógica
 export async function eliminarUsuario(email) {
   const usuario = await obtenerUsuarioPorEmail(email)
 
@@ -34,9 +34,11 @@ export async function eliminarUsuario(email) {
   }
 
   const response = await fetch(
-    `${API_USUARIOS}/${encodeURIComponent(usuario.email)}`,
+    `${API_USUARIOS}/${usuario.id}`,
     {
-      method: 'DELETE'
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...usuario, estado: 'inactivo' })
     }
   )
 
@@ -52,7 +54,7 @@ export async function actualizarUsuario(email, datosActualizados) {
   }
 
   const response = await fetch(
-    `${API_USUARIOS}/${encodeURIComponent(usuario.email)}`,
+    `${API_USUARIOS}/${usuario.id}`,
     {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
