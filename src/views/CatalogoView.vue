@@ -114,7 +114,6 @@ const abrirAlta = () => {
 const abrirModificacion = (libro) => {
   editando.value = true
   mostrandoFormulario.value = true
-  tituloLibroEdicion.value = libro.titulo
   formulario.value = { ...libro }
 }
 
@@ -130,20 +129,15 @@ const guardarLibro = async () => {
       `¿Guardar los cambios para "${formulario.value.titulo}"?`,
       'default',
       async () => {
-        const indice = libros.value.findIndex(
-          l => l.titulo === tituloLibroEdicion.value
-        )
-        if (indice !== -1) {
-          libros.value[indice] = { ...formulario.value }
-        }
         try {
-          await actualizarLibro(tituloLibroEdicion.value, formulario.value)
+          await actualizarLibro(formulario.value.id, formulario.value)
           mostrar('Libro actualizado correctamente', 'success')
+          mostrandoFormulario.value = false
+          await cargarLibros()
         } catch (error) {
           console.error('Error al guardar en MockAPI:', error)
+          mostrar('Error al actualizar el libro', 'error')
         }
-        mostrandoFormulario.value = false
-        await cargarLibros()
       }
     )
   } else {
@@ -151,11 +145,12 @@ const guardarLibro = async () => {
       const nuevo = await agregarLibro(formulario.value)
       libros.value.push(nuevo)
       mostrar('Libro registrado correctamente', 'success')
+      mostrandoFormulario.value = false
+      await cargarLibros()
     } catch (error) {
-      libros.value.push({ ...formulario.value })
+      console.error('Error al registrar libro:', error)
+      mostrar('Error al registrar el libro', 'error')
     }
-    mostrandoFormulario.value = false
-    await cargarLibros()
   }
 }
 
@@ -187,15 +182,29 @@ const confirmarBaja = async () => {
       `Esto eliminará "${libro.titulo}" completamente del catálogo. ¿Continuar?`,
       'danger',
       async () => {
-        await eliminarLibro(libro.titulo)
-        mostrar('Libro eliminado del catálogo', 'success')
-        await cargarLibros()
+        try {
+          await eliminarLibro(libro.id)
+          mostrar('Libro eliminado del catálogo', 'success')
+          await cargarLibros()
+        } catch (error) {
+          console.error('Error al eliminar libro:', error)
+          mostrar('Error al eliminar el libro', 'error')
+        }
       }
     )
   } else {
-    await actualizarLibro(libro.titulo, { ...libro, stock: Number(libro.stock) - num })
-    mostrar(`Se eliminaron ${num} ejemplares de "${libro.titulo}"`, 'success')
-    await cargarLibros()
+    try {
+      await actualizarLibro(libro.id, {
+        ...libro,
+        stock: Number(libro.stock) - num
+      })
+
+      mostrar(`Se eliminaron ${num} ejemplares de "${libro.titulo}"`, 'success')
+      await cargarLibros()
+    } catch (error) {
+      console.error('Error al actualizar stock:', error)
+      mostrar('Error al actualizar el stock', 'error')
+    }
   }
 }
 

@@ -6,15 +6,6 @@ export async function obtenerLibros() {
   return await response.json()
 }
 
-// Buscar libro por título
-async function obtenerLibroPorTitulo(titulo) {
-  const libros = await obtenerLibros()
-
-  return libros.find(
-    libro => libro.titulo.toLowerCase() === titulo.toLowerCase()
-  )
-}
-
 // Alta
 export async function agregarLibro(nuevoLibro) {
   const response = await fetch(API_LIBROS, {
@@ -22,43 +13,34 @@ export async function agregarLibro(nuevoLibro) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(nuevoLibro)
   })
+
   return await response.json()
 }
 
 // Baja
-export async function eliminarLibro(titulo) {
-  const libro = await obtenerLibroPorTitulo(titulo)
+export async function eliminarLibro(id) {
+  const response = await fetch(`${API_LIBROS}/${id}`, {
+    method: 'DELETE'
+  })
 
-  if (!libro) {
-    throw new Error('Libro no encontrado')
+  if (!response.ok) {
+    throw new Error('Error al eliminar libro')
   }
-
-  const response = await fetch(
-    `${API_LIBROS}/${encodeURIComponent(libro.titulo)}`,
-    {
-      method: 'DELETE'
-    }
-  )
 
   return await response.json()
 }
 
 // Modificación
-export async function actualizarLibro(titulo, datosActualizados) {
-  const libro = await obtenerLibroPorTitulo(titulo)
+export async function actualizarLibro(id, datosActualizados) {
+  const response = await fetch(`${API_LIBROS}/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(datosActualizados)
+  })
 
-  if (!libro) {
-    throw new Error('Libro no encontrado')
+  if (!response.ok) {
+    throw new Error('Error al actualizar libro')
   }
-
-  const response = await fetch(
-    `${API_LIBROS}/${encodeURIComponent(libro.titulo)}`,
-    {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(datosActualizados)
-    }
-  )
 
   return await response.json()
 }
