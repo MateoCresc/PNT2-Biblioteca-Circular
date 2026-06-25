@@ -75,6 +75,14 @@ const ratioCircular = computed(() => {
   return Number.isInteger(ratio) ? `${ratio}:1` : `${ratio.toFixed(1)}:1`
 })
 
+const ratioClase = computed(() => {
+  const don = operaciones.value.filter(op => op.tipo === 'donacion' && op.estado === 'aprobada').length
+  const ret = retirosAprobados.value
+  if (don === 0 && ret === 0) return ''
+  if (ret === 0) return 'kpi-verde'
+  return don / ret >= 1 ? 'kpi-verde' : 'kpi-naranja'
+})
+
 const operacionesRecientes = computed(() =>
   [...operaciones.value]
     .sort((a, b) => {
@@ -260,7 +268,7 @@ const maxRol = computed(() =>
             <span class="kpi-valor">{{ operacionesPendientes }}</span>
             <span class="kpi-label">Pendientes</span>
           </div>
-          <div class="kpi-card">
+          <div class="kpi-card" :class="ratioClase">
             <span class="kpi-valor kpi-ratio">{{ ratioCircular }}</span>
             <span class="kpi-label">Ratio Don/Ret</span>
           </div>
@@ -417,6 +425,7 @@ const maxRol = computed(() =>
 .kpi-verde    .kpi-valor { color: var(--color-success); }
 .kpi-rojo     .kpi-valor { color: var(--color-danger); }
 .kpi-amarillo .kpi-valor { color: var(--color-warning); }
+.kpi-naranja  .kpi-valor { color: #f97316; }
 
 /* Secciones */
 .seccion {

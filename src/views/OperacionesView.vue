@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { obtenerLibros, actualizarLibro, agregarLibro } from '../services/librosService'
 import { obtenerOperaciones, actualizarOperacion } from '../services/operacionesService'
 import { useToast } from '../composables/useToast'
@@ -13,11 +13,25 @@ const { mostrar } = useToast()
 const operaciones = ref([])
 const libros = ref([])
 const cargando = ref(true)
+const ordenFecha = ref('desc')
 
 onMounted(async () => {
   libros.value = await obtenerLibros()
   operaciones.value = await obtenerOperaciones()
   cargando.value = false
+})
+
+const parsearFecha = (fecha) => {
+  const [d, m, y] = fecha.split('/').map(Number)
+  return new Date(y, m - 1, d)
+}
+
+const operacionesOrdenadas = computed(() => {
+  return [...operaciones.value].sort((a, b) => {
+    const fechaA = parsearFecha(a.fecha)
+    const fechaB = parsearFecha(b.fecha)
+    return ordenFecha.value === 'desc' ? fechaB - fechaA : fechaA - fechaB
+  })
 })
 
 const aprobarOperacion = async (operacion) => {
@@ -86,6 +100,13 @@ const rechazarOperacion = async (operacion) => {
       />
 
       <AppCard v-else>
+        <div class="filtro-fecha">
+          <label>Ordenar por fecha:</label>
+          <select v-model="ordenFecha">
+            <option value="desc">Más nuevas primero</option>
+            <option value="asc">Más antiguas primero</option>
+          </select>
+        </div>
         <table class="tabla-operaciones">
           <thead>
             <tr>
@@ -101,7 +122,7 @@ const rechazarOperacion = async (operacion) => {
 
           <tbody>
             <tr
-              v-for="operacion in operaciones"
+              v-for="operacion in operacionesOrdenadas"
               :key="operacion.id"
             >
               <td>{{ operacion.tipo === 'retiro' ? 'Retiro' : 'Donación' }}</td>
@@ -175,5 +196,27 @@ h2 {
 .acciones {
   display: flex;
   gap: var(--space-sm);
+}
+
+.filtro-fecha {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.filtro-fecha label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.filtro-fecha select {
+  padding: 6px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  background: var(--color-card);
+  color: var(--color-text);
 }
 </style>
