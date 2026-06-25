@@ -15,6 +15,7 @@ import AppModal from '../components/AppModal.vue'
 import FormField from '../components/FormField.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import EmptyState from '../components/EmptyState.vue'
+import ChatbotIA from '../components/ChatbotIA.vue'
 
 const router = useRouter()
 const { mostrar } = useToast()
@@ -457,6 +458,8 @@ const enviarDonacionNueva = async () => {
         </template>
       </template>
     </AppCard>
+
+    <ChatbotIA />
 
   </div>
 </template>
